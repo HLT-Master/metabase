@@ -67,9 +67,9 @@
   (testing "dump-to-h2 --dump-plaintext"
     (let [h2-fixture-db-file  @cmd.test-util/fixture-db-file-path
           db-name             (str "test_" (mt/random-name))]
-      (mt/with-temp-file [h2-file-plaintext (format "/tmp/out-%s.db" (mt/random-name))]
-        (mt/with-temp-file [h2-file-enc (format "/tmp/out-%s.db" (mt/random-name))]
-          (mt/with-temp-file [h2-file-default-enc (format "/tmp/out-%s.db" (mt/random-name))]
+      (mt/with-temp-file [h2-file-plaintext (format "out-%s.db" (mt/random-name))]
+        (mt/with-temp-file [h2-file-enc (format "out-%s.db" (mt/random-name))]
+          (mt/with-temp-file [h2-file-default-enc (format "out-%s.db" (mt/random-name))]
             (mt/test-drivers #{:h2 :postgres :mysql}
               (with-redefs [i18n.impl/site-locale-from-setting-fn (atom (constantly false))]
                 (binding [setting/*disable-cache*    true
