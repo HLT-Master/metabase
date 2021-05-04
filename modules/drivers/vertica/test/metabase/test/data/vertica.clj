@@ -11,9 +11,9 @@
             [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
+            [metabase.test :as mt]
             [metabase.util :as u]
-            [metabase.util.files :as files]
-            [metabase.test :as mt]))
+            [metabase.util.files :as files]))
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
