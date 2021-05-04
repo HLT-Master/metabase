@@ -8,17 +8,28 @@ export default function PaginationControls({
   page,
   pageSize,
   itemsLength,
+  total,
+  showTotal,
   onNextPage,
   onPreviousPage,
 }) {
+  const isPreviousDisabled = page === 0;
+  const isNextDisabled =
+    total != null ? isLastPage(page, pageSize, total) : !onNextPage;
+
   return (
-    <div className="flex align-center" aria-label="pagination">
-      <span className="text-bold mr1">
+    <div className="flex align-center text-bold" aria-label="pagination">
+      <span className="mr1">
         {page * pageSize + 1} - {page * pageSize + itemsLength}
+        {showTotal && (
+          <React.Fragment>
+            <span className="text-light">&nbsp;of&nbsp;</span> {total}
+          </React.Fragment>
+        )}
       </span>
       <PaginationButton
         onClick={onPreviousPage}
-        disabled={!onPreviousPage}
+        disabled={isPreviousDisabled}
         data-testid="previous-page-btn"
       >
         <Icon name="chevronleft" />
@@ -26,7 +37,7 @@ export default function PaginationControls({
       <PaginationButton
         small
         onClick={onNextPage}
-        disabled={!onNextPage}
+        disabled={isNextDisabled}
         data-testid="next-page-btn"
       >
         <Icon name="chevronright" />
@@ -37,7 +48,7 @@ export default function PaginationControls({
 
 const PaginationButton = IconWrapper.withComponent("button").extend`
   &:disabled {
-    background-color: ${colors["white"]};
+    background-color: transparent;
     color: ${colors["text-light"]};
   }
 `;
@@ -46,6 +57,15 @@ PaginationControls.propTypes = {
   page: PropTypes.number.isRequired,
   pageSize: PropTypes.number.isRequired,
   itemsLength: PropTypes.number.isRequired,
+  total: PropTypes.number,
+  showTotal: PropTypes.bool,
   onNextPage: PropTypes.func,
   onPreviousPage: PropTypes.func,
 };
+
+PaginationControls.defaultProps = {
+  showTotal: false,
+};
+
+export const isLastPage = (pageIndex, pageSize, total) =>
+  pageIndex === Math.ceil(total / pageSize) - 1;
