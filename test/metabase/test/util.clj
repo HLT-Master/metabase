@@ -836,7 +836,7 @@
 
 (defn do-with-temp-file
   "Impl for `with-temp-file` macro."
-  [filename content f]
+  [filename f]
   {:pre [(or (string? filename) (nil? filename))]}
   (let [filename (if (string? filename)
                    filename
@@ -845,17 +845,15 @@
     ;; delete file if it already exists
     (io/delete-file (io/file filename) :silently)
     (try
-      (when content
-        (spit filename content))
       (f filename)
       (finally
         (io/delete-file (io/file filename) :silently)))))
 
 (defmacro with-temp-file
-  "Execute `body` with a newly created temporary file in the system temporary directory. You may optionally specify
-  `filename` (without directory components) and file `content`. If `filename` is nil, a random filename will be used.
-  If `content` is specified, `file` will be overwritten with `content` (via `spit`); otherwise the file will be
-  deleted if it already exists.
+  "Execute `body` with newly created temporary file(s) in the system temporary directory. You may optionally specify the
+  `filename` (without directory components) to be created in the temp directory; if `filename` is nil, a random
+  filename will be used. The file will be deleted if it already exists, but will not be touched; use `spit` to load
+  something in to it.
 
     ;; create a random temp filename. File is deleted if it already exists.
     (with-temp-file [filename]
@@ -863,18 +861,15 @@
 
     ;; get a temp filename ending in `parrot-list.txt`
     (with-temp-file [filename \"parrot-list.txt\"]
-      ...)
-
-    ;; create a temp file ending in `parrot-list.txt` with a few birds in it
-    (with-temp-file [filename \"bird-list.txt\" (str/join \"\n\" [\"Parroty\" \"Green Friend\" \"Yellow Friend\"])]
-      ...)
-
-    ;; create a temp file with a random name with a few birds in it
-    (with-temp-file [filename _ (str/join \"\n\" [\"Parroty\" \"Green Friend\" \"Yellow Friend\"])]
       ...)"
-  [[filename-binding filename-or-nil content-or-nil :as bindings] & body]
-  {:pre [(vector? bindings) (<= 1 (count bindings) 3)]}
-  `(do-with-temp-file ~filename-or-nil ~content-or-nil (fn [~(vary-meta filename-binding assoc :tag `String)] ~@body)))
+  [[filename-binding filename-or-nil & more :as bindings] & body]
+  {:pre [(vector? bindings) (>= (count bindings) 1)]}
+  `(do-with-temp-file
+    ~filename-or-nil
+    (fn [~(vary-meta filename-binding assoc :tag `String)]
+      ~@(if (seq more)
+          [`(with-temp-file ~(vec more) ~@body)]
+          body))))
 
 (deftest with-temp-file-test
   (testing "random filename"
@@ -897,21 +892,27 @@
         (with-temp-file [filename "parrot-list.txt"]
           (is (not (.exists (io/file filename))))))))
 
-  (testing "loading contents"
-    (let [parrots (str/join "\n" ["Parroty" "Green Friend" "Yellow Friend"])]
-      (with-temp-file [filename "parrot-list.txt" parrots]
-        (is (string? filename))
-        (is (.exists (io/file filename)))
-        (is (str/ends-with? filename "parrot-list.txt"))
-        (is (= (slurp filename) parrots)))))
+  (testing "multiple bindings"
+    (with-temp-file [filename nil, filename-2 "parrot-list.txt"]
+      (is (string? filename))
+      (is (string? filename-2))
+      (is (not (.exists (io/file filename))))
+      (is (not (.exists (io/file filename-2))))
+      (is (not (str/ends-with? filename "parrot-list.txt")))
+      (is (str/ends-with? filename-2 "parrot-list.txt"))))
+
+  (testing "should delete existing file"
+    (with-temp-file [filename "parrot-list.txt"]
+      (spit filename "wow")
+      (with-temp-file [filename "parrot-list.txt"]
+        (is (not (.exists (io/file filename)))))))
 
   (testing "validation"
     (are [form] (thrown?
                  clojure.lang.Compiler$CompilerException
                  (macroexpand form))
       `(with-temp-file [])
-      `(with-temp-file (+ 1 2))
-      (list `with-temp-file '[a b c d]))))
+      `(with-temp-file (+ 1 2)))))
 
 (defn- ->lisp-case-keyword [s]
   (-> (name s)
@@ -946,9 +947,9 @@
   `(do-with-temp-env-var-value
     ~(->lisp-case-keyword env-var)
     ~value
-    ~(if (seq more)
-       `(fn [] (with-temp-env-var-value ~(vec more) ~@body))
-       `(fn [] ~@body))))
+    (fn [] ~@(if (seq more)
+               [`(with-temp-env-var-value ~(vec more) ~@body)]
+               body))))
 
 (setting/defsetting with-temp-env-var-value-test-setting
   "Setting for the `with-temp-env-var-value-test` test."
