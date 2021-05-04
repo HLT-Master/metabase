@@ -12,7 +12,8 @@
             [metabase.test.data.sql-jdbc.execute :as execute]
             [metabase.test.data.sql-jdbc.load-data :as load-data]
             [metabase.util :as u]
-            [metabase.util.files :as files]))
+            [metabase.util.files :as files]
+            [metabase.test :as mt]))
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
@@ -142,7 +143,7 @@
 (defmethod load-data/load-data! :vertica
   [driver dbdef {:keys [rows], :as tabledef}]
   (try
-    (let [filename (str (files/get-path (System/getProperty "java.io.tmpdir") "vertica-rows.csv"))]
+    (mt/with-temp-file [filename "vertica-rows.csv"]
       (dump-table-rows-to-csv! tabledef filename)
       (load-rows-from-csv! driver dbdef tabledef filename))
     (catch Throwable e
