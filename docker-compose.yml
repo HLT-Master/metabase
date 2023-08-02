@@ -1,0 +1,6 @@
+version: '3.3'
+services:
+  beanstalk-flask:
+    image: '939342045249.dkr.ecr.us-east-1.amazonaws.com/metabase-production'
+    ports:
+      - "00:3000"
